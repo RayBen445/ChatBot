@@ -6,7 +6,7 @@ import {
   signOut,
   updateProfile
 } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { auth, createUserProfile, getUserProfile, updateUserProfile } from '../lib/firebase';
 
 const AuthContext = createContext();
 
@@ -16,6 +16,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const signup = async (email, password, displayName) => {
@@ -24,6 +25,8 @@ export const AuthProvider = ({ children }) => {
     if (displayName) {
       await updateProfile(result.user, { displayName });
     }
+    // Create user profile in Firestore
+    await createUserProfile(result.user, { displayName });
     return result;
   };
 
@@ -43,16 +46,44 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      if (user) {
+        // Create or get user profile
+        await createUserProfile(user);
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+        
+        // Update last active
+        await updateUserProfile(user.uid, { lastActive: new Date() });
+      } else {
+        setUserProfile(null);
+      }
+      
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
+  // Update last active every 5 minutes
+  useEffect(() => {
+    const updateLastActive = async () => {
+      if (currentUser) {
+        await updateUserProfile(currentUser.uid, { lastActive: new Date() });
+      }
+    };
+
+    if (currentUser) {
+      const interval = setInterval(updateLastActive, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
+
   const value = {
     currentUser,
+    userProfile,
     signup,
     login,
     logout,
