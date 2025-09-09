@@ -1,0 +1,98 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile
+} from 'firebase/auth';
+import { auth, createUserProfile, getUserProfile, updateUserProfile } from '../lib/firebase';
+
+const AuthContext = createContext();
+
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const signup = async (email, password, displayName) => {
+    if (!auth) throw new Error('Firebase not initialized');
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    if (displayName) {
+      await updateProfile(result.user, { displayName });
+    }
+    // Create user profile in Firestore
+    await createUserProfile(result.user, { displayName });
+    return result;
+  };
+
+  const login = (email, password) => {
+    if (!auth) throw new Error('Firebase not initialized');
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const logout = () => {
+    if (!auth) throw new Error('Firebase not initialized');
+    return signOut(auth);
+  };
+
+  useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      
+      if (user) {
+        // Create or get user profile
+        await createUserProfile(user);
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+        
+        // Update last active
+        await updateUserProfile(user.uid, { lastActive: new Date() });
+      } else {
+        setUserProfile(null);
+      }
+      
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Update last active every 5 minutes
+  useEffect(() => {
+    const updateLastActive = async () => {
+      if (currentUser) {
+        await updateUserProfile(currentUser.uid, { lastActive: new Date() });
+      }
+    };
+
+    if (currentUser) {
+      const interval = setInterval(updateLastActive, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
+
+  const value = {
+    currentUser,
+    userProfile,
+    signup,
+    login,
+    logout,
+    loading
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+};
