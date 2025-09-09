@@ -36,23 +36,31 @@ const SupportModal = ({ isOpen, onClose }) => {
         setMessage('');
         onClose();
       } else {
-        // Fallback to WhatsApp
-        const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348075614248';
+        // Fallback to WhatsApp if configured
+        const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+        if (whatsappNumber) {
+          const userName = currentUser?.displayName || currentUser?.email?.split('@')[0];
+          const whatsappMessage = `Hi! I'm ${userName} and I need help with MindBot AI. Issue type: ${issueType}\n\nMessage: ${message}`;
+          const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+          window.open(whatsappUrl, '_blank');
+          onClose();
+        } else {
+          alert('Support is temporarily unavailable. Please try again later.');
+        }
+      }
+    } catch (error) {
+      console.error('Support request error:', error);
+      // Fallback to WhatsApp if configured
+      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+      if (whatsappNumber) {
         const userName = currentUser?.displayName || currentUser?.email?.split('@')[0];
         const whatsappMessage = `Hi! I'm ${userName} and I need help with MindBot AI. Issue type: ${issueType}\n\nMessage: ${message}`;
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
         window.open(whatsappUrl, '_blank');
         onClose();
+      } else {
+        alert('Support is temporarily unavailable. Please try again later.');
       }
-    } catch (error) {
-      console.error('Support request error:', error);
-      // Fallback to WhatsApp
-      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348075614248';
-      const userName = currentUser?.displayName || currentUser?.email?.split('@')[0];
-      const whatsappMessage = `Hi! I'm ${userName} and I need help with MindBot AI. Issue type: ${issueType}\n\nMessage: ${message}`;
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
-      window.open(whatsappUrl, '_blank');
-      onClose();
     }
     setLoading(false);
   };

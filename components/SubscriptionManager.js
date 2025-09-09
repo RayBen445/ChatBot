@@ -77,7 +77,12 @@ const SubscriptionManager = () => {
     
     // For paid plans, redirect to WhatsApp for subscription
     if (tier !== SUBSCRIPTION_TIERS.FREE) {
-      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348075614248';
+      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+      if (!whatsappNumber) {
+        alert('Subscription service is temporarily unavailable. Please try again later.');
+        return;
+      }
+      
       const planName = plans.find(p => p.tier === tier)?.name || 'Pro';
       const userName = currentUser.displayName || currentUser.email.split('@')[0];
       
