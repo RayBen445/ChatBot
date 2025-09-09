@@ -1,8 +1,56 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Lock, Crown, Shield } from 'lucide-react';
+import { Send, Bot, User, Loader2, Lock, Crown, Shield, Code, FileText, Lightbulb, Database } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { canUseFeature, USER_STATUS, SUBSCRIPTION_TIERS } from '../lib/firebase';
 import Link from 'next/link';
+
+// Feature categories for better organization
+const FEATURE_CATEGORIES = {
+  development: {
+    icon: Code,
+    title: 'Development',
+    features: [
+      'Code generation in any language',
+      'Debugging assistance',
+      'Code explanation & review',
+      'Test generation',
+      'API integration examples'
+    ]
+  },
+  writing: {
+    icon: FileText,
+    title: 'Writing & Documentation',
+    features: [
+      'Technical documentation',
+      'Email drafting',
+      'Content creation',
+      'Language translation',
+      'Grammar correction'
+    ]
+  },
+  analysis: {
+    icon: Database,
+    title: 'Data & Analysis',
+    features: [
+      'Data analysis & insights',
+      'SQL query generation',
+      'Chart descriptions',
+      'Report summaries',
+      'Research assistance'
+    ]
+  },
+  creative: {
+    icon: Lightbulb,
+    title: 'Creative & Learning',
+    features: [
+      'Tutorial creation',
+      'Problem solving',
+      'Brainstorming ideas',
+      'Learning assistance',
+      'Creative writing'
+    ]
+  }
+};
 
 export default function ChatInterface() {
   const { currentUser, userProfile } = useAuth();
@@ -10,6 +58,7 @@ export default function ChatInterface() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [dailyMessageCount, setDailyMessageCount] = useState(0);
+  const [showFeatureGuide, setShowFeatureGuide] = useState(true);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -98,6 +147,7 @@ export default function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+    setShowFeatureGuide(false); // Hide feature guide once user starts chatting
     
     // Increment daily message count for free users
     if (userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE) {
@@ -224,13 +274,66 @@ export default function ChatInterface() {
                 </span>
               )}
             </h3>
-            <p className="text-gray-500">Start a conversation by typing a message below.</p>
+            <p className="text-gray-500 mb-6">I can help you with a wide range of tasks. Here&apos;s what I can do:</p>
             
             {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg inline-block">
+              <div className="mt-4 mb-6 p-3 bg-blue-50 rounded-lg inline-block">
                 <p className="text-sm text-blue-700">
                   You have {dailyLimit - dailyMessageCount} free messages remaining today
                 </p>
+              </div>
+            )}
+            
+            {/* Feature Guide */}
+            {showFeatureGuide && (
+              <div className="max-w-4xl mx-auto mt-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+                  {Object.entries(FEATURE_CATEGORIES).map(([key, category]) => (
+                    <div key={key} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex items-center mb-3">
+                        <category.icon className="h-5 w-5 text-blue-500 mr-2" />
+                        <h4 className="text-sm font-medium text-gray-900">{category.title}</h4>
+                      </div>
+                      <ul className="space-y-1">
+                        {category.features.map((feature, idx) => (
+                          <li key={idx} className="text-xs text-gray-600">• {feature}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => setShowFeatureGuide(false)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Hide Features Guide
+                  </button>
+                </div>
+                
+                {/* Quick start suggestions */}
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Try asking me:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Write a Python function to calculate fibonacci",
+                      "Explain this JavaScript code",
+                      "Help me debug this error",
+                      "Generate unit tests for my function",
+                      "Translate this text to Spanish",
+                      "Analyze this data and find insights"
+                    ].map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setInputMessage(suggestion)}
+                        className="text-xs px-3 py-1 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>

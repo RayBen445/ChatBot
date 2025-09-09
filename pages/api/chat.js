@@ -41,14 +41,21 @@ export default async function handler(req, res) {
     // Enhanced response based on subscription tier
     const subscriptionTier = userProfile?.subscriptionTier || SUBSCRIPTION_TIERS.FREE;
     let responseOptions = {
-      maxLength: subscriptionTier === SUBSCRIPTION_TIERS.FREE ? 200 : 
-                  subscriptionTier === SUBSCRIPTION_TIERS.PRO ? 500 : 1000,
+      maxLength: subscriptionTier === SUBSCRIPTION_TIERS.FREE ? 300 : 
+                  subscriptionTier === SUBSCRIPTION_TIERS.PRO ? 800 : 2000,
       priority: subscriptionTier === SUBSCRIPTION_TIERS.PLUS ? 'high' : 
                 subscriptionTier === SUBSCRIPTION_TIERS.PRO ? 'medium' : 'low',
       features: {
         advancedReasoning: subscriptionTier !== SUBSCRIPTION_TIERS.FREE,
-        codeGeneration: subscriptionTier === SUBSCRIPTION_TIERS.PLUS,
-        longContext: subscriptionTier === SUBSCRIPTION_TIERS.PLUS
+        codeGeneration: subscriptionTier !== SUBSCRIPTION_TIERS.FREE,
+        longContext: subscriptionTier === SUBSCRIPTION_TIERS.PLUS,
+        debugging: subscriptionTier !== SUBSCRIPTION_TIERS.FREE,
+        codeReview: subscriptionTier === SUBSCRIPTION_TIERS.PRO || subscriptionTier === SUBSCRIPTION_TIERS.PLUS,
+        testGeneration: subscriptionTier === SUBSCRIPTION_TIERS.PLUS,
+        languageTranslation: subscriptionTier === SUBSCRIPTION_TIERS.PRO || subscriptionTier === SUBSCRIPTION_TIERS.PLUS,
+        documentation: subscriptionTier !== SUBSCRIPTION_TIERS.FREE,
+        dataAnalysis: subscriptionTier === SUBSCRIPTION_TIERS.PLUS,
+        expertMode: subscriptionTier === SUBSCRIPTION_TIERS.PLUS
       }
     };
 

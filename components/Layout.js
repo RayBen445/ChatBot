@@ -33,6 +33,18 @@ export default function Layout({ children }) {
               {currentUser && (
                 <div className="flex items-center space-x-4">
                   <Link
+                    href="/features"
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                      router.pathname === '/features'
+                        ? 'bg-white/20 text-white'
+                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <Bot className="h-4 w-4" />
+                    <span className="text-sm font-medium">Features</span>
+                  </Link>
+                  
+                  <Link
                     href="/subscription"
                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all duration-200 ${
                       router.pathname === '/subscription'
