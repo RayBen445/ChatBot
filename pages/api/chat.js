@@ -59,7 +59,10 @@ export default async function handler(req, res) {
       }
     };
 
-    const response = await generateChatResponse(message, chatHistory, responseOptions);
+    const response = await generateChatResponse(message, chatHistory, {
+      ...responseOptions,
+      userProfile: userProfile // Pass user profile for personalization
+    });
 
     if (response.success) {
       res.status(200).json({

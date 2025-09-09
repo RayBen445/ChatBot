@@ -261,17 +261,20 @@ export default function ChatInterface() {
           <div className="text-center py-8">
             <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Welcome to ChatBot AI
-              {userProfile && (
-                <span className={`ml-2 text-sm px-2 py-1 rounded-full ${
-                  userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE
-                    ? 'bg-gray-100 text-gray-600'
-                    : userProfile.subscriptionTier === SUBSCRIPTION_TIERS.PRO
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'bg-yellow-100 text-yellow-600'
-                }`}>
-                  {userProfile.subscriptionTier?.toUpperCase() || 'FREE'}
-                </span>
+              Welcome to MindBot AI
+              {userProfile && currentUser && (
+                <>
+                  , {currentUser.displayName || currentUser.email.split('@')[0]}!
+                  <span className={`ml-2 text-sm px-2 py-1 rounded-full ${
+                    userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE
+                      ? 'bg-gray-100 text-gray-600'
+                      : userProfile.subscriptionTier === SUBSCRIPTION_TIERS.PRO
+                      ? 'bg-blue-100 text-blue-600'
+                      : 'bg-yellow-100 text-yellow-600'
+                  }`}>
+                    {userProfile.subscriptionTier?.toUpperCase() || 'FREE'}
+                  </span>
+                </>
               )}
             </h3>
             <p className="text-gray-500 mb-6">I can help you with a wide range of tasks. Here&apos;s what I can do:</p>

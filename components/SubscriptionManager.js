@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Shield, Users, Check, X } from 'lucide-react';
+import { Crown, Shield, Users, Check, X, MessageCircle, Send } from 'lucide-react';
 import { updateSubscriptionTier, SUBSCRIPTION_TIERS } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 
@@ -75,10 +75,22 @@ const SubscriptionManager = () => {
   const handleUpgrade = async (tier) => {
     if (!currentUser || loading) return;
     
+    // For paid plans, redirect to WhatsApp for subscription
+    if (tier !== SUBSCRIPTION_TIERS.FREE) {
+      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348075614248';
+      const planName = plans.find(p => p.tier === tier)?.name || 'Pro';
+      const userName = currentUser.displayName || currentUser.email.split('@')[0];
+      
+      const message = `Hi! I'm ${userName} and I'd like to upgrade to the ${planName} plan for MindBot AI. Please help me with the subscription process.`;
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      
+      window.open(whatsappUrl, '_blank');
+      return;
+    }
+    
     setLoading(true);
     try {
-      // In a real app, this would integrate with a payment processor
-      // For demo purposes, we'll just update the subscription
+      // For free tier (downgrade), update directly
       const success = await updateSubscriptionTier(currentUser.uid, tier);
       
       if (success) {
@@ -213,9 +225,16 @@ const SubscriptionManager = () => {
                     <button
                       onClick={() => handleUpgrade(plan.tier)}
                       disabled={loading}
-                      className={`w-full py-3 px-6 rounded-lg text-white font-medium transition-all duration-200 ${getColorClasses(plan.color, 'primary')} disabled:opacity-50`}
+                      className={`w-full py-3 px-6 rounded-lg text-white font-medium transition-all duration-200 ${getColorClasses(plan.color, 'primary')} disabled:opacity-50 flex items-center justify-center space-x-2`}
                     >
-                      {loading ? 'Processing...' : `Upgrade to ${plan.name}`}
+                      {loading ? (
+                        <>Loading...</>
+                      ) : (
+                        <>
+                          <MessageCircle className="h-4 w-4" />
+                          <span>Contact via WhatsApp</span>
+                        </>
+                      )}
                     </button>
                   ) : canDowngrade ? (
                     <button
@@ -241,9 +260,19 @@ const SubscriptionManager = () => {
       </div>
 
       <div className="mt-12 text-center">
-        <p className="text-sm text-gray-500">
-          * This is a demo application. No actual payments will be processed.
+        <p className="text-sm text-gray-500 mb-4">
+          For subscription upgrades, contact us directly via WhatsApp for personalized assistance.
         </p>
+        <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
+          <div className="flex items-center space-x-2">
+            <MessageCircle className="h-4 w-4" />
+            <span>WhatsApp Support: +234 807 561 4248</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Send className="h-4 w-4" />
+            <span>Telegram Support Available</span>
+          </div>
+        </div>
       </div>
     </div>
   );

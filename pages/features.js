@@ -94,7 +94,7 @@ export default function FeaturesPage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            ChatBot AI Features
+            MindBot AI Features
           </h1>
           <p className="text-xl text-gray-600 mb-6">
             Discover all the powerful capabilities at your fingertips

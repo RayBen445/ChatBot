@@ -1,12 +1,15 @@
 import { useAuth } from '../components/AuthProvider';
-import { LogOut, Bot, Shield, Crown } from 'lucide-react';
+import { LogOut, Bot, Shield, Crown, MessageCircle } from 'lucide-react';
 import { isAdmin } from '../lib/firebase';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useState } from 'react';
+import SupportModal from './SupportModal';
 
 export default function Layout({ children }) {
   const { currentUser, userProfile, logout } = useAuth();
   const router = useRouter();
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -27,7 +30,7 @@ export default function Layout({ children }) {
                 <div className="h-8 w-8 bg-gradient-to-r from-purple-400 to-blue-600 rounded-lg flex items-center justify-center">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-white">ChatBot AI</h1>
+                <h1 className="text-xl font-bold text-white">MindBot AI</h1>
               </Link>
               
               {currentUser && (
@@ -55,6 +58,14 @@ export default function Layout({ children }) {
                     <Crown className="h-4 w-4" />
                     <span className="text-sm font-medium">Upgrade</span>
                   </Link>
+                  
+                  <button
+                    onClick={() => setShowSupportModal(true)}
+                    className="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all duration-200 text-white/80 hover:bg-white/10 hover:text-white"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Support</span>
+                  </button>
                   
                   {userProfile && isAdmin(userProfile) && (
                     <Link
@@ -115,6 +126,12 @@ export default function Layout({ children }) {
       <main className="flex-1">
         {children}
       </main>
+      
+      {/* Support Modal */}
+      <SupportModal 
+        isOpen={showSupportModal} 
+        onClose={() => setShowSupportModal(false)} 
+      />
     </div>
   );
 }

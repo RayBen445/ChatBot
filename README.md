@@ -1,6 +1,6 @@
-# ChatBot AI - Copilot-like Assistant
+# MindBot AI - Advanced AI Assistant
 
-A modern chatbot application powered by Google Gemini AI with Firebase authentication, designed for seamless deployment on Vercel.
+A modern intelligent chatbot application powered by Google Gemini AI with Firebase authentication, comprehensive admin system, subscription management, and 100+ AI capabilities across development, writing, data analysis, and creative domains.
 
 ## 🚀 Features
 
