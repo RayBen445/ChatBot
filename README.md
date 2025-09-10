@@ -93,6 +93,8 @@ Set your admin email address in the `ADMIN_EMAIL` environment variable. Users wi
 - Subscription management
 - Access to admin dashboard
 
+> 📖 **For detailed configuration including multiple admin emails and troubleshooting, see [CONFIGURATION.md](CONFIGURATION.md)**
+
 ### Support Configuration (Optional)
 For support features, you can configure:
 - **WhatsApp Support**: Set `NEXT_PUBLIC_WHATSAPP_NUMBER` (format: country code + number, e.g., `1234567890`)

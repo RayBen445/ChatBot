@@ -67,6 +67,30 @@ export default function ChatInterface() {
 
   useEffect(scrollToBottom, [messages]);
 
+  // Load message count from backend when user profile is available
+  useEffect(() => {
+    const loadMessageCount = async () => {
+      if (userProfile && currentUser) {
+        try {
+          const response = await fetch(`/api/messages?userId=${currentUser.uid}`);
+          const data = await response.json();
+          
+          if (data.success) {
+            setMonthlyMessageCount(data.messageCount);
+          } else {
+            console.error('Failed to load message count:', data.message);
+            // Keep default state of 0 if loading fails
+          }
+        } catch (error) {
+          console.error('Error loading message count:', error);
+          // Keep default state of 0 if loading fails
+        }
+      }
+    };
+
+    loadMessageCount();
+  }, [userProfile, currentUser]);
+
   // Check if user can send messages
   const canSendMessage = () => {
     if (!userProfile) return false;
@@ -177,7 +201,29 @@ export default function ChatInterface() {
     
     // Increment monthly message count for users with limits (not admins)
     if (!isAdmin(userProfile) && getMonthlyLimit() !== Infinity) {
-      setMonthlyMessageCount(prev => prev + 1);
+      try {
+        const countResponse = await fetch(`/api/messages?userId=${currentUser.uid}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'increment'
+          }),
+        });
+        
+        const countData = await countResponse.json();
+        if (countData.success) {
+          setMonthlyMessageCount(countData.messageCount);
+        } else {
+          // Fallback to local increment if API fails
+          setMonthlyMessageCount(prev => prev + 1);
+        }
+      } catch (error) {
+        console.error('Error updating message count:', error);
+        // Fallback to local increment if API fails
+        setMonthlyMessageCount(prev => prev + 1);
+      }
     }
 
     try {

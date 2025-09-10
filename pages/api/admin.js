@@ -9,9 +9,27 @@ export default async function handler(req, res) {
     const { action, userId, adminUserId, duration, subscriptionTier } = req.body;
 
     // Verify admin user
+    if (!adminUserId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Admin user ID is required' 
+      });
+    }
+
     const adminProfile = await getUserProfile(adminUserId);
-    if (!adminProfile || !isAdmin(adminProfile)) {
-      return res.status(403).json({ message: 'Unauthorized' });
+    if (!adminProfile) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Admin user not found. Please ensure you are logged in with a valid admin account.' 
+      });
+    }
+    
+    if (!isAdmin(adminProfile)) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied. Your account is not recognized as an admin account. Please contact the system administrator if you believe this is an error.',
+        adminEmails: 'Admin emails are configured via the ADMIN_EMAIL environment variable'
+      });
     }
 
     let result = false;
