@@ -23,15 +23,31 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (email, password, displayName) => {
     if (!auth) throw new Error('Firebase not initialized');
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    if (displayName) {
-      await updateProfile(result.user, { displayName });
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      if (displayName) {
+        await updateProfile(result.user, { displayName });
+      }
+      
+      // Send email verification with better error handling
+      try {
+        await sendEmailVerification(result.user, {
+          url: `${window.location.origin}/`,  // Fallback URL
+          handleCodeInApp: true
+        });
+      } catch (verificationError) {
+        console.error('Email verification sending failed:', verificationError);
+        // Don't fail signup if email verification fails
+        // User can resend verification later
+      }
+      
+      // Create user profile in Firestore
+      await createUserProfile(result.user, { displayName });
+      return result;
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
     }
-    // Send email verification
-    await sendEmailVerification(result.user);
-    // Create user profile in Firestore
-    await createUserProfile(result.user, { displayName });
-    return result;
   };
 
   const login = (email, password) => {
@@ -44,9 +60,35 @@ export const AuthProvider = ({ children }) => {
     return sendPasswordResetEmail(auth, email);
   };
 
-  const resendVerification = () => {
+  const resendVerification = async () => {
     if (!auth || !currentUser) throw new Error('User not authenticated');
-    return sendEmailVerification(currentUser);
+    try {
+      await sendEmailVerification(currentUser, {
+        url: `${window.location.origin}/`,  // Fallback URL
+        handleCodeInApp: true
+      });
+      return { success: true, message: 'Verification email sent successfully' };
+    } catch (error) {
+      console.error('Email verification resend failed:', error);
+      
+      // Provide user-friendly error messages
+      let userMessage = 'Failed to send verification email. ';
+      if (error.code === 'auth/too-many-requests') {
+        userMessage += 'Too many requests. Please wait a few minutes before trying again.';
+      } else if (error.code === 'auth/network-request-failed') {
+        userMessage += 'Network error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('ERR_CONNECTION_REFUSED')) {
+        userMessage += 'Unable to reach verification service. Please try again later or contact support.';
+      } else {
+        userMessage += 'Please try again later or contact support if the problem persists.';
+      }
+      
+      return { 
+        success: false, 
+        message: userMessage,
+        error: error.code || 'unknown-error' 
+      };
+    }
   };
 
   const logout = () => {
