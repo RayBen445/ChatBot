@@ -43,7 +43,12 @@ Before running this application, make sure you have:
    ```
 
 3. **Environment Variables**:
-   Create a `.env.local` file in the root directory and add your keys:
+   Copy the `.env.example` file to `.env.local` and fill in your actual values:
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Then edit `.env.local` with your configuration:
    ```env
    # Google Gemini API
    GOOGLE_GEMINI_API_KEY=your_google_gemini_api_key_here
@@ -56,7 +61,17 @@ Before running this application, make sure you have:
    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id_here
    NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id_here
    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id_here
+
+   # Admin Configuration
+   ADMIN_EMAIL=your_admin_email_here
+
+   # Support & Contact Configuration
+   NEXT_PUBLIC_WHATSAPP_NUMBER=your_whatsapp_number_here
+   NEXT_PUBLIC_TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+   NEXT_PUBLIC_TELEGRAM_ADMIN_ID=your_telegram_admin_id_here
    ```
+
+   > ⚠️ **Security Note**: Never commit your `.env.local` file to version control as it contains sensitive information!
 
 ## 🔑 Getting API Keys
 
@@ -71,6 +86,20 @@ Before running this application, make sure you have:
 3. Enable Authentication and choose Email/Password as a sign-in method
 4. Go to Project Settings > General > Your apps
 5. Add a web app and copy the configuration values
+
+### Admin Configuration
+Set your admin email address in the `ADMIN_EMAIL` environment variable. Users with this email will have administrative privileges including:
+- User management (ban, suspend, reactivate users)
+- Subscription management
+- Access to admin dashboard
+
+### Support Configuration (Optional)
+For support features, you can configure:
+- **WhatsApp Support**: Set `NEXT_PUBLIC_WHATSAPP_NUMBER` (format: country code + number, e.g., `1234567890`)
+- **Telegram Support**: 
+  1. Create a Telegram bot via [@BotFather](https://t.me/botfather)
+  2. Set `NEXT_PUBLIC_TELEGRAM_BOT_TOKEN` with your bot token
+  3. Set `NEXT_PUBLIC_TELEGRAM_ADMIN_ID` with your Telegram user ID
 
 ## 🚀 Running the Application
 
@@ -94,13 +123,46 @@ Before running this application, make sure you have:
    ```
 
 2. **Add Environment Variables in Vercel**:
-   - Go to your Vercel dashboard
+   - Go to your [Vercel dashboard](https://vercel.com/dashboard)
    - Select your project
-   - Go to Settings > Environment Variables
-   - Add all the environment variables from your `.env.local` file
+   - Go to **Settings** > **Environment Variables**
+   - Add **each** environment variable from your `.env.local` file:
+     
+     **Required Server-side Variables:**
+     - `GOOGLE_GEMINI_API_KEY` - Your Google Gemini API key
+     - `ADMIN_EMAIL` - Admin email address for privileged access
+     
+     **Required Client-side Variables (with NEXT_PUBLIC_ prefix):**
+     - `NEXT_PUBLIC_FIREBASE_API_KEY` - Firebase API key
+     - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` - Firebase auth domain
+     - `NEXT_PUBLIC_FIREBASE_PROJECT_ID` - Firebase project ID
+     - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` - Firebase storage bucket
+     - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` - Firebase messaging sender ID
+     - `NEXT_PUBLIC_FIREBASE_APP_ID` - Firebase app ID
+     - `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` - Firebase measurement ID (optional)
+     
+     **Optional Support Configuration:**
+     - `NEXT_PUBLIC_WHATSAPP_NUMBER` - WhatsApp number for support (without +)
+     - `NEXT_PUBLIC_TELEGRAM_BOT_TOKEN` - Telegram bot token for support
+     - `NEXT_PUBLIC_TELEGRAM_ADMIN_ID` - Telegram admin user ID
+   
+   > 💡 **Tip**: Copy and paste the variable names exactly as shown to avoid typos!
 
 3. **Redeploy**:
    After adding environment variables, redeploy your application.
+
+### 🔧 Troubleshooting Vercel Deployment
+
+**Issue**: `Environment Variable "GOOGLE_GEMINI_API_KEY" references Secret "google-gemini-api-key", which does not exist`
+
+**Solution**: This error occurs when the `vercel.json` file references Vercel secrets that don't exist. The current configuration uses regular environment variables instead of secrets. To fix this:
+
+1. Remove any `vercel.json` file from your project (or ensure it doesn't contain an `env` section with `@secret-name` references)
+2. Set environment variables directly in the Vercel dashboard under **Settings** > **Environment Variables**
+3. Use regular variable names (not prefixed with `@`)
+4. Redeploy your application
+
+**Note**: The current setup uses standard environment variables for easier configuration and doesn't require creating Vercel secrets via CLI.
 
 ## 🎯 Additional Features That Can Be Added
 
