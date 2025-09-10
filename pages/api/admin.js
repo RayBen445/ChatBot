@@ -24,6 +24,10 @@ export default async function handler(req, res) {
       });
     }
     
+    // 🐛 ISSUE 1 CONTEXT: This is where admin access is denied
+    // isAdmin() checks the stored role in the user profile
+    // If oladoyeheritage445@gmail.com was added to ADMIN_EMAIL after account creation,
+    // their stored role is still 'user', causing this check to fail
     if (!isAdmin(adminProfile)) {
       return res.status(403).json({ 
         success: false,
