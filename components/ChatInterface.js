@@ -70,6 +70,11 @@ export default function ChatInterface() {
   // Load message count from backend when user profile is available
   useEffect(() => {
     const loadMessageCount = async () => {
+      // 🐛 ISSUE 3 ROOT CAUSE: Message count persistence issues
+      // This function depends on both userProfile AND currentUser being available
+      // Race condition: Component may mount before authentication completes
+      // If either is missing or API call fails, count defaults to 0
+      // SOLUTION NEEDED: Better error handling, retry mechanism, and auth state checking
       if (userProfile && currentUser) {
         try {
           const response = await fetch(`/api/messages?userId=${currentUser.uid}`);
@@ -79,10 +84,12 @@ export default function ChatInterface() {
             setMonthlyMessageCount(data.messageCount);
           } else {
             console.error('Failed to load message count:', data.message);
+            // 🐛 ISSUE 3 DETAIL: Defaulting to 0 on failure causes count reset appearance
             // Keep default state of 0 if loading fails
           }
         } catch (error) {
           console.error('Error loading message count:', error);
+          // 🐛 ISSUE 3 DETAIL: Network/Firebase errors cause count to appear reset
           // Keep default state of 0 if loading fails
         }
       }
@@ -216,11 +223,15 @@ export default function ChatInterface() {
         if (countData.success) {
           setMonthlyMessageCount(countData.messageCount);
         } else {
+          // 🐛 ISSUE 3 CONTEXT: Fallback increments local state when API fails
+          // This can cause inconsistency between UI and database
+          // User sees count increment but database may not be updated
           // Fallback to local increment if API fails
           setMonthlyMessageCount(prev => prev + 1);
         }
       } catch (error) {
         console.error('Error updating message count:', error);
+        // 🐛 ISSUE 3 CONTEXT: Same fallback issue - local increment masks API failure
         // Fallback to local increment if API fails
         setMonthlyMessageCount(prev => prev + 1);
       }

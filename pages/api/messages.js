@@ -16,6 +16,10 @@ export default async function handler(req, res) {
       });
     }
 
+    // 🐛 ISSUE 3 CONTEXT: Message count persistence implementation
+    // This API correctly stores/retrieves counts from database
+    // Issues occur when: 1) Firebase not initialized, 2) Network errors, 
+    // 3) User not found, 4) Authentication timing issues
     // Get user profile
     const userProfile = await getUserProfile(userId);
     if (!userProfile) {

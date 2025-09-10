@@ -142,7 +142,16 @@ Ensure your Firebase configuration includes the correct domain settings:
 1. Verify the email in `ADMIN_EMAIL` matches exactly (including case sensitivity)
 2. Check that the environment variable is properly loaded
 3. Restart the application after changing environment variables
-4. Ensure the user's account was created after setting the admin email
+4. **🔧 CRITICAL**: Ensure the user's account was created after setting the admin email
+
+**Specific Case - oladoyeheritage445@gmail.com**:
+- **CONFIRMED ISSUE**: If this email was added to `ADMIN_EMAIL` after the user account was created, the user's role in Firestore is still `'user'`
+- **DIAGNOSIS**: Admin roles are only assigned during account creation (`createUserProfile` function)
+- **MANUAL FIX**: Update the user's role directly in Firestore:
+  1. Open Firebase Console > Firestore Database
+  2. Find the user document in the `users` collection (by UID)
+  3. Update the `role` field from `'user'` to `'admin'`
+  4. User will have admin access on next login/page refresh
 
 **Problem**: Multiple admin emails not working
 **Solutions**:
@@ -225,15 +234,32 @@ GOOGLE_GEMINI_API_KEY=your_gemini_api_key
 
 ## Recent Changes
 
-### Version 1.1.0 Fixes
+### Version 1.1.0 Fixes & Issue Diagnosis
 
 1. **Admin Email Recognition**: Now supports multiple admin emails
+   - **🐛 CONFIRMED ISSUE**: Admin role assignment only occurs during user account creation
+   - **ROOT CAUSE**: If `oladoyeheritage445@gmail.com` was added to `ADMIN_EMAIL` after their account was created, their role remains `'user'` 
+   - **SOLUTION**: Implement role synchronization or manually update user role in Firestore
+   
 2. **Message Limit Persistence**: Message counts stored in database
+   - **🐛 CONFIRMED ISSUE**: While correctly implemented, message counts can appear to reset due to:
+     - Authentication timing issues (component loads before user auth completes)
+     - Firebase/Firestore connection failures
+     - API errors falling back to local state defaulting to 0
+   - **SOLUTION**: Improve error handling, add retry mechanisms, ensure auth completion before loading
+
 3. **Email Verification**: Improved error handling and user feedback
-4. **Error Messages**: More descriptive error messages throughout the app
+   - **🐛 CONFIRMED ISSUE**: ERR_CONNECTION_REFUSED occurs due to Firebase domain configuration
+   - **ROOT CAUSE**: Continuation URLs may not be authorized in Firebase Console's "Authorized domains"
+   - **SOLUTION**: Ensure proper domain authorization in Firebase Console settings
 
 ### Migration Notes
 
 - Existing users will have their message counts reset when the new system is deployed
 - Admin users need to be reconfigured using the new multiple email format
+- **🔧 CRITICAL**: Existing admin users may need manual role updates in Firestore if added to ADMIN_EMAIL after account creation
 - No database migration is required as the new fields will be created automatically
+
+### Diagnostic Tools
+
+Run `node diagnose-issues.js` to analyze your configuration for these common issues.

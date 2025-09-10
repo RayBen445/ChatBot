@@ -31,6 +31,12 @@ export const AuthProvider = ({ children }) => {
       
       // Send email verification with better error handling
       try {
+        // 🐛 ISSUE 2 ROOT CAUSE: Email verification ERR_CONNECTION_REFUSED
+        // The fallback URL may not be properly authorized in Firebase Console
+        // handleCodeInApp: true requires proper Firebase Dynamic Links setup
+        // or the domain must be in Firebase Console > Authentication > Settings > Authorized domains
+        // Current fallback URL: window.location.origin + "/"
+        // SOLUTION NEEDED: Ensure proper domain authorization in Firebase Console
         await sendEmailVerification(result.user, {
           url: `${window.location.origin}/`,  // Fallback URL
           handleCodeInApp: true
@@ -63,6 +69,9 @@ export const AuthProvider = ({ children }) => {
   const resendVerification = async () => {
     if (!auth || !currentUser) throw new Error('User not authenticated');
     try {
+      // 🐛 ISSUE 2 CONTINUED: Same domain authorization issue applies here
+      // ERR_CONNECTION_REFUSED occurs when Firebase cannot reach the continuation URL
+      // or when the domain is not authorized in Firebase Console
       await sendEmailVerification(currentUser, {
         url: `${window.location.origin}/`,  // Fallback URL
         handleCodeInApp: true
