@@ -90,24 +90,31 @@ export default function Layout({ children }) {
                   <div className="text-white/90 text-sm font-medium">
                     {currentUser.displayName || currentUser.email}
                   </div>
-                  {userProfile && (
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        userProfile.subscriptionTier === 'free' 
-                          ? 'bg-gray-500/20 text-gray-200'
-                          : userProfile.subscriptionTier === 'pro'
-                          ? 'bg-blue-500/20 text-blue-200'
-                          : 'bg-yellow-500/20 text-yellow-200'
-                      }`}>
-                        {userProfile.subscriptionTier?.toUpperCase() || 'FREE'}
-                      </span>
-                      {userProfile.role === 'admin' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200">
-                          ADMIN
+                  <div className="flex items-center space-x-2">
+                    {userProfile ? (
+                      <>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          userProfile.subscriptionTier === 'free' 
+                            ? 'bg-gray-500/20 text-gray-200'
+                            : userProfile.subscriptionTier === 'pro'
+                            ? 'bg-blue-500/20 text-blue-200'
+                            : 'bg-yellow-500/20 text-yellow-200'
+                        }`}>
+                          {userProfile.subscriptionTier?.toUpperCase() || 'FREE'}
                         </span>
-                      )}
-                    </div>
-                  )}
+                        {userProfile.role === 'admin' && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200">
+                            ADMIN
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      // Show loading state while profile is being fetched
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-200 animate-pulse">
+                        Loading...
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={handleLogout}

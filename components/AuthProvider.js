@@ -50,13 +50,27 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(user);
       
       if (user) {
-        // Create or get user profile
-        await createUserProfile(user);
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
-        
-        // Update last active
-        await updateUserProfile(user.uid, { lastActive: new Date() });
+        try {
+          // Create or get user profile
+          await createUserProfile(user);
+          const profile = await getUserProfile(user.uid);
+          setUserProfile(profile);
+          
+          // Update last active
+          await updateUserProfile(user.uid, { lastActive: new Date() });
+        } catch (error) {
+          console.error('Error setting up user profile:', error);
+          // Even if profile setup fails, we should still set a basic profile
+          // to ensure the UI doesn't break
+          setUserProfile({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: 'user',
+            subscriptionTier: 'free',
+            status: 'active'
+          });
+        }
       } else {
         setUserProfile(null);
       }

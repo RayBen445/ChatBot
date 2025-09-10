@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Crown, Shield, Users, Check, X, MessageCircle, Send } from 'lucide-react';
-import { updateSubscriptionTier, SUBSCRIPTION_TIERS } from '../lib/firebase';
+import { updateSubscriptionTier, SUBSCRIPTION_TIERS, isAdmin } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 
 const SubscriptionManager = () => {
@@ -140,6 +140,25 @@ const SubscriptionManager = () => {
           Unlock powerful AI features and enhance your chat experience with our subscription plans.
         </p>
       </div>
+
+      {/* Admin Notice */}
+      {userProfile && isAdmin(userProfile) && (
+        <div className="mb-8 bg-gradient-to-r from-purple-100 to-indigo-100 border-2 border-purple-300 rounded-2xl p-6">
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <Shield className="h-8 w-8 text-purple-600" />
+            <h3 className="text-2xl font-bold text-purple-900">Administrator Access</h3>
+          </div>
+          <div className="text-center">
+            <p className="text-purple-800 mb-4 font-medium">
+              As an administrator, you have unlimited access to all features and premium functionality regardless of subscription tier.
+            </p>
+            <div className="inline-flex items-center space-x-2 bg-purple-200 text-purple-800 px-4 py-2 rounded-full font-semibold">
+              <Crown className="h-5 w-5" />
+              <span>Unlimited Access Enabled</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => {
