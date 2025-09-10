@@ -1,11 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Crown, Shield, Users, Check, X, MessageCircle, Send } from 'lucide-react';
-import { updateSubscriptionTier, SUBSCRIPTION_TIERS, isAdmin } from '../lib/firebase';
+import { updateSubscriptionTier, SUBSCRIPTION_TIERS, isAdmin, getPricing, getActiveDiscounts } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 
 const SubscriptionManager = () => {
   const { userProfile, currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [pricing, setPricing] = useState(null);
+  const [discounts, setDiscounts] = useState([]);
+
+  useEffect(() => {
+    const loadPricingData = async () => {
+      try {
+        const [pricingData, discountData] = await Promise.all([
+          getPricing(),
+          getActiveDiscounts()
+        ]);
+        setPricing(pricingData);
+        setDiscounts(discountData);
+      } catch (error) {
+        console.error('Error loading pricing data:', error);
+      }
+    };
+
+    loadPricingData();
+  }, []);
+
+  const getDiscountedPrice = (basePrice, tier) => {
+    const applicableDiscounts = discounts.filter(discount => 
+      discount.applicableTiers.includes(tier) && 
+      new Date() >= new Date(discount.startDate.seconds * 1000) &&
+      new Date() <= new Date(discount.endDate.seconds * 1000)
+    );
+    
+    if (applicableDiscounts.length === 0) return basePrice;
+    
+    // Apply the best discount
+    const bestDiscount = applicableDiscounts.reduce((best, current) => 
+      current.discountPercent > best.discountPercent ? current : best
+    );
+    
+    return basePrice * (1 - bestDiscount.discountPercent / 100);
+  };
 
   const plans = [
     {
@@ -30,14 +66,15 @@ const SubscriptionManager = () => {
     {
       name: 'Pro',
       tier: SUBSCRIPTION_TIERS.PRO,
-      price: '$9.99',
+      price: pricing ? `$${getDiscountedPrice(pricing[SUBSCRIPTION_TIERS.PRO].price, SUBSCRIPTION_TIERS.PRO).toFixed(2)}` : '$9.99',
+      originalPrice: pricing ? pricing[SUBSCRIPTION_TIERS.PRO].price : 9.99,
       period: '/month',
       icon: Shield,
       color: 'blue',
       popular: true,
       features: [
         'Advanced chat functionality',
-        'Unlimited daily messages',
+        '500 daily messages',
         'Faster response time',
         'Voice input/output',
         'Priority support',
@@ -46,13 +83,15 @@ const SubscriptionManager = () => {
       ],
       limitations: [
         'No file uploads',
-        'Limited storage space'
+        'Limited storage space',
+        'Message limits still apply'
       ]
     },
     {
       name: 'Plus',
       tier: SUBSCRIPTION_TIERS.PLUS,
-      price: '$19.99',
+      price: pricing ? `$${getDiscountedPrice(pricing[SUBSCRIPTION_TIERS.PLUS].price, SUBSCRIPTION_TIERS.PLUS).toFixed(2)}` : '$19.99',
+      originalPrice: pricing ? pricing[SUBSCRIPTION_TIERS.PLUS].price : 19.99,
       period: '/month',
       icon: Crown,
       color: 'yellow',
@@ -206,6 +245,14 @@ const SubscriptionManager = () => {
                   <div className="mb-4">
                     <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
                     {plan.period && <span className="text-gray-600">{plan.period}</span>}
+                    {plan.originalPrice && parseFloat(plan.price.replace('$', '')) < plan.originalPrice && (
+                      <div className="mt-1">
+                        <span className="text-lg text-gray-500 line-through">${plan.originalPrice}</span>
+                        <span className="ml-2 text-sm text-green-600 font-semibold">
+                          {Math.round((1 - parseFloat(plan.price.replace('$', '')) / plan.originalPrice) * 100)}% OFF
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

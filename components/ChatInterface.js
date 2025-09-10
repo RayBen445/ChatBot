@@ -88,8 +88,9 @@ export default function ChatInterface() {
       }
     }
     
-    // Check daily message limits for free users
-    if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE && dailyMessageCount >= 50) {
+    // Check daily message limits based on tier
+    const dailyLimit = getDailyLimit();
+    if (dailyLimit !== Infinity && dailyMessageCount >= dailyLimit) {
       return false;
     }
     
@@ -108,6 +109,7 @@ export default function ChatInterface() {
       case SUBSCRIPTION_TIERS.FREE:
         return 50;
       case SUBSCRIPTION_TIERS.PRO:
+        return 500; // Pro users get 500 messages per day
       case SUBSCRIPTION_TIERS.PLUS:
         return Infinity;
       default:
@@ -145,7 +147,16 @@ export default function ChatInterface() {
     if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE && dailyMessageCount >= 50) {
       return {
         type: 'warning',
-        message: 'Daily message limit reached. Upgrade to Pro for unlimited messages.',
+        message: 'Daily message limit reached. Upgrade to Pro for 500 messages or Plus for unlimited.',
+        icon: Crown,
+        action: 'upgrade'
+      };
+    }
+    
+    if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.PRO && dailyMessageCount >= 500) {
+      return {
+        type: 'warning',
+        message: 'Daily Pro message limit reached. Upgrade to Plus for unlimited messages.',
         icon: Crown,
         action: 'upgrade'
       };
@@ -164,8 +175,8 @@ export default function ChatInterface() {
     setIsLoading(true);
     setShowFeatureGuide(false); // Hide feature guide once user starts chatting
     
-    // Increment daily message count for free users (not admins)
-    if (userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile)) {
+    // Increment daily message count for users with limits (not admins)
+    if (!isAdmin(userProfile) && getDailyLimit() !== Infinity) {
       setDailyMessageCount(prev => prev + 1);
     }
 
@@ -243,8 +254,8 @@ export default function ChatInterface() {
         </div>
       )}
       
-      {/* Usage Counter for Free Users (not admins) */}
-      {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile) && (
+      {/* Usage Counter for Users with Limits (not admins or unlimited Plus users) */}
+      {userProfile && !isAdmin(userProfile) && userProfile.subscriptionTier !== SUBSCRIPTION_TIERS.PLUS && (
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">
@@ -294,10 +305,10 @@ export default function ChatInterface() {
             </h3>
             <p className="text-gray-500 mb-6">I can help you with a wide range of tasks. Here&apos;s what I can do:</p>
             
-            {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile) && (
+            {userProfile && !isAdmin(userProfile) && dailyLimit !== Infinity && (
               <div className="mt-4 mb-6 p-3 bg-blue-50 rounded-lg inline-block">
                 <p className="text-sm text-blue-700">
-                  You have {dailyLimit - dailyMessageCount} free messages remaining today
+                  You have {dailyLimit - dailyMessageCount} {userProfile.subscriptionTier} messages remaining today
                 </p>
               </div>
             )}
@@ -452,12 +463,12 @@ export default function ChatInterface() {
           </button>
         </form>
         
-        {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile) && dailyMessageCount >= 40 && dailyMessageCount < 50 && (
+        {userProfile && !isAdmin(userProfile) && dailyLimit !== Infinity && dailyMessageCount >= Math.floor(dailyLimit * 0.8) && dailyMessageCount < dailyLimit && (
           <div className="mt-2 text-center">
             <p className="text-sm text-orange-600">
               {dailyLimit - dailyMessageCount} messages remaining today. 
               <Link href="/subscription" className="ml-1 underline hover:text-orange-700">
-                Upgrade for unlimited
+                {userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE ? 'Upgrade to Pro or Plus' : 'Upgrade to Plus for unlimited'}
               </Link>
             </p>
           </div>

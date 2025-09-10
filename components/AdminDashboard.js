@@ -9,7 +9,11 @@ import {
   UserX,
   Calendar,
   Mail,
-  Activity
+  Activity,
+  DollarSign,
+  Tag,
+  Settings,
+  Plus
 } from 'lucide-react';
 import { 
   getAllUsers, 
@@ -18,7 +22,12 @@ import {
   reactivateUser, 
   updateSubscriptionTier,
   USER_STATUS,
-  SUBSCRIPTION_TIERS 
+  SUBSCRIPTION_TIERS,
+  getPricing,
+  updatePricing,
+  getActiveDiscounts,
+  createDiscount,
+  updateDiscount
 } from '../lib/firebase';
 
 const AdminDashboard = () => {
@@ -27,9 +36,16 @@ const AdminDashboard = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('users');
+  const [pricing, setPricing] = useState(null);
+  const [discounts, setDiscounts] = useState([]);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [selectedDiscount, setSelectedDiscount] = useState(null);
 
   useEffect(() => {
     loadUsers();
+    loadPricingData();
   }, []);
 
   const loadUsers = async () => {
@@ -41,6 +57,19 @@ const AdminDashboard = () => {
       console.error('Error loading users:', error);
     }
     setLoading(false);
+  };
+
+  const loadPricingData = async () => {
+    try {
+      const [pricingData, discountData] = await Promise.all([
+        getPricing(),
+        getActiveDiscounts()
+      ]);
+      setPricing(pricingData);
+      setDiscounts(discountData);
+    } catch (error) {
+      console.error('Error loading pricing data:', error);
+    }
   };
 
   const handleUserAction = async (userId, action, duration = null) => {
@@ -84,6 +113,44 @@ const AdminDashboard = () => {
       console.error('Error updating subscription:', error);
     }
     setActionLoading(false);
+  };
+
+  const handlePricingUpdate = async (newPricing) => {
+    try {
+      const success = await updatePricing(newPricing);
+      if (success) {
+        setPricing(newPricing);
+        setShowPricingModal(false);
+      }
+    } catch (error) {
+      console.error('Error updating pricing:', error);
+    }
+  };
+
+  const handleCreateDiscount = async (discountData) => {
+    try {
+      const success = await createDiscount(discountData);
+      if (success) {
+        await loadPricingData();
+        setShowDiscountModal(false);
+        setSelectedDiscount(null);
+      }
+    } catch (error) {
+      console.error('Error creating discount:', error);
+    }
+  };
+
+  const handleUpdateDiscount = async (discountId, updates) => {
+    try {
+      const success = await updateDiscount(discountId, updates);
+      if (success) {
+        await loadPricingData();
+        setShowDiscountModal(false);
+        setSelectedDiscount(null);
+      }
+    } catch (error) {
+      console.error('Error updating discount:', error);
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -147,6 +214,39 @@ const AdminDashboard = () => {
         <p className="text-gray-600">Manage users, subscriptions, and system health</p>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="mb-8">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'users'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Users className="h-4 w-4 inline mr-2" />
+              Users
+            </button>
+            <button
+              onClick={() => setActiveTab('pricing')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'pricing'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <DollarSign className="h-4 w-4 inline mr-2" />
+              Pricing & Discounts
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Users Tab */}
+      {activeTab === 'users' && (
+        <>
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
         <div className="bg-white rounded-lg p-4 shadow border">
@@ -341,6 +441,95 @@ const AdminDashboard = () => {
           </table>
         </div>
       </div>
+        </>
+      )}
+
+      {/* Pricing Tab */}
+      {activeTab === 'pricing' && (
+        <div className="space-y-8">
+          {/* Current Pricing */}
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Current Pricing</h2>
+              <button
+                onClick={() => setShowPricingModal(true)}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center space-x-2"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Edit Prices</span>
+              </button>
+            </div>
+            
+            {pricing && (
+              <div className="grid md:grid-cols-3 gap-6">
+                {Object.entries(pricing).map(([tier, data]) => (
+                  <div key={tier} className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-900 mb-2">{tier.toUpperCase()}</h3>
+                    <p className="text-2xl font-bold text-gray-900">${data.price}</p>
+                    <p className="text-sm text-gray-500">{data.currency}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Active Discounts */}
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Active Discounts</h2>
+              <button
+                onClick={() => {
+                  setSelectedDiscount(null);
+                  setShowDiscountModal(true);
+                }}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Discount</span>
+              </button>
+            </div>
+            
+            {discounts.length === 0 ? (
+              <p className="text-gray-500">No active discounts</p>
+            ) : (
+              <div className="space-y-4">
+                {discounts.map((discount) => (
+                  <div key={discount.id} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{discount.name}</h3>
+                      <p className="text-sm text-gray-600">{discount.discountPercent}% off</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(discount.startDate.seconds * 1000).toLocaleDateString()} - 
+                        {new Date(discount.endDate.seconds * 1000).toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Applies to: {discount.applicableTiers.join(', ')}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedDiscount(discount);
+                          setShowDiscountModal(true);
+                        }}
+                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleUpdateDiscount(discount.id, { active: false })}
+                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Deactivate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* User Management Modal */}
       {selectedUser && (
@@ -425,6 +614,217 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Pricing Management Modal */}
+      {showPricingModal && pricing && (
+        <PricingModal
+          pricing={pricing}
+          onClose={() => setShowPricingModal(false)}
+          onSave={handlePricingUpdate}
+        />
+      )}
+
+      {/* Discount Management Modal */}
+      {showDiscountModal && (
+        <DiscountModal
+          discount={selectedDiscount}
+          onClose={() => {
+            setShowDiscountModal(false);
+            setSelectedDiscount(null);
+          }}
+          onSave={selectedDiscount ? 
+            (updates) => handleUpdateDiscount(selectedDiscount.id, updates) : 
+            handleCreateDiscount
+          }
+        />
+      )}
+    </div>
+  );
+};
+
+// Pricing Modal Component
+const PricingModal = ({ pricing, onClose, onSave }) => {
+  const [formData, setFormData] = useState(pricing);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Edit Pricing</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {Object.entries(formData).map(([tier, data]) => (
+              <div key={tier}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {tier.toUpperCase()} Price ($)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={data.price}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    [tier]: { ...prev[tier], price: parseFloat(e.target.value) }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            ))}
+            
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Save Changes
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Discount Modal Component
+const DiscountModal = ({ discount, onClose, onSave }) => {
+  const [formData, setFormData] = useState(discount || {
+    name: '',
+    discountPercent: 0,
+    startDate: '',
+    endDate: '',
+    applicableTiers: []
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const submitData = {
+      ...formData,
+      startDate: new Date(formData.startDate),
+      endDate: new Date(formData.endDate)
+    };
+    onSave(submitData);
+  };
+
+  const handleTierToggle = (tier) => {
+    setFormData(prev => ({
+      ...prev,
+      applicableTiers: prev.applicableTiers.includes(tier)
+        ? prev.applicableTiers.filter(t => t !== tier)
+        : [...prev.applicableTiers, tier]
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-10 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              {discount ? 'Edit Discount' : 'Create Discount'}
+            </h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+              <input
+                type="number"
+                min="1"
+                max="99"
+                value={formData.discountPercent}
+                onChange={(e) => setFormData(prev => ({ ...prev, discountPercent: parseInt(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="datetime-local"
+                value={formData.startDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="datetime-local"
+                value={formData.endDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Applicable Tiers</label>
+              <div className="space-y-2">
+                {Object.values(SUBSCRIPTION_TIERS).filter(tier => tier !== SUBSCRIPTION_TIERS.FREE).map(tier => (
+                  <label key={tier} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.applicableTiers.includes(tier)}
+                      onChange={() => handleTierToggle(tier)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">{tier.toUpperCase()}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                {discount ? 'Update' : 'Create'} Discount
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };
