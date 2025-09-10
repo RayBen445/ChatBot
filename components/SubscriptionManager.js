@@ -71,7 +71,7 @@ const SubscriptionManager = () => {
       color: 'gray',
       features: [
         'Basic chat functionality',
-        'Limited daily messages (50)',
+        '1,500 monthly messages',
         'Standard response time',
         'Basic support'
       ],
@@ -93,7 +93,7 @@ const SubscriptionManager = () => {
       popular: true,
       features: [
         'Advanced chat functionality',
-        '500 daily messages',
+        '15,000 monthly messages',
         'Faster response time',
         'Voice input/output',
         'Priority support',
