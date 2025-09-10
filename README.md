@@ -151,6 +151,19 @@ For support features, you can configure:
 3. **Redeploy**:
    After adding environment variables, redeploy your application.
 
+### 🔧 Troubleshooting Vercel Deployment
+
+**Issue**: `Environment Variable "GOOGLE_GEMINI_API_KEY" references Secret "google-gemini-api-key", which does not exist`
+
+**Solution**: This error occurs when the `vercel.json` file references Vercel secrets that don't exist. The current configuration uses regular environment variables instead of secrets. To fix this:
+
+1. Remove any `vercel.json` file from your project (or ensure it doesn't contain an `env` section with `@secret-name` references)
+2. Set environment variables directly in the Vercel dashboard under **Settings** > **Environment Variables**
+3. Use regular variable names (not prefixed with `@`)
+4. Redeploy your application
+
+**Note**: The current setup uses standard environment variables for easier configuration and doesn't require creating Vercel secrets via CLI.
+
 ## 🎯 Additional Features That Can Be Added
 
 ### 📚 Core Features
