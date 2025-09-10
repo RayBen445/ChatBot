@@ -13,7 +13,10 @@ import {
   DollarSign,
   Tag,
   Settings,
-  Plus
+  Plus,
+  Globe,
+  Bell,
+  Lock
 } from 'lucide-react';
 import { 
   getAllUsers, 
@@ -27,7 +30,8 @@ import {
   updatePricing,
   getActiveDiscounts,
   createDiscount,
-  updateDiscount
+  updateDiscount,
+  SUPPORTED_CURRENCIES
 } from '../lib/firebase';
 
 const AdminDashboard = () => {
@@ -42,6 +46,17 @@ const AdminDashboard = () => {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [selectedDiscount, setSelectedDiscount] = useState(null);
+  const [appSettings, setAppSettings] = useState({
+    maintenanceMode: false,
+    allowNewRegistrations: true,
+    maxDailyMessages: { free: 50, pro: 500, plus: Infinity },
+    supportContact: {
+      whatsapp: '+234 807 561 4248',
+      telegram: 'Available'
+    },
+    currencies: ['USD', 'GBP', 'NGN'],
+    defaultCurrency: 'USD'
+  });
 
   useEffect(() => {
     loadUsers();
@@ -239,6 +254,17 @@ const AdminDashboard = () => {
             >
               <DollarSign className="h-4 w-4 inline mr-2" />
               Pricing & Discounts
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'settings'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Settings className="h-4 w-4 inline mr-2" />
+              Settings
             </button>
           </nav>
         </div>
@@ -461,13 +487,23 @@ const AdminDashboard = () => {
             </div>
             
             {pricing && (
-              <div className="grid md:grid-cols-3 gap-6">
-                {Object.entries(pricing).map(([tier, data]) => (
-                  <div key={tier} className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-medium text-gray-900 mb-2">{tier.toUpperCase()}</h3>
-                    <p className="text-2xl font-bold text-gray-900">${data.price}</p>
-                    <p className="text-sm text-gray-500">{data.currency}</p>
-                  </div>
+              <div className="space-y-6">
+                {Object.entries(pricing).map(([tier, tierData]) => (
+                  tier !== 'free' && (
+                    <div key={tier} className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-medium text-gray-900 mb-3 capitalize">{tier} Tier</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {Object.entries(tierData).map(([currency, data]) => (
+                          <div key={currency} className="text-center">
+                            <p className="text-lg font-bold text-gray-900">
+                              {SUPPORTED_CURRENCIES[currency]?.symbol || '$'}{currency === 'NGN' ? data.price.toLocaleString() : data.price.toFixed(2)}
+                            </p>
+                            <p className="text-sm text-gray-500">{currency}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
                 ))}
               </div>
             )}
@@ -527,6 +563,162 @@ const AdminDashboard = () => {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="space-y-8">
+          {/* General Settings */}
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">General Settings</h2>
+              <Settings className="h-6 w-6 text-gray-400" />
+            </div>
+            
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">Maintenance Mode</h3>
+                  <p className="text-sm text-gray-500">Temporarily disable the application for maintenance</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={appSettings.maintenanceMode}
+                    onChange={(e) => setAppSettings(prev => ({ ...prev, maintenanceMode: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">Allow New Registrations</h3>
+                  <p className="text-sm text-gray-500">Enable or disable new user registrations</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={appSettings.allowNewRegistrations}
+                    onChange={(e) => setAppSettings(prev => ({ ...prev, allowNewRegistrations: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Message Limits */}
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Message Limits</h2>
+              <Bell className="h-6 w-6 text-gray-400" />
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Free Tier Daily Limit</label>
+                <input
+                  type="number"
+                  value={appSettings.maxDailyMessages.free}
+                  onChange={(e) => setAppSettings(prev => ({
+                    ...prev,
+                    maxDailyMessages: { ...prev.maxDailyMessages, free: parseInt(e.target.value) }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pro Tier Daily Limit</label>
+                <input
+                  type="number"
+                  value={appSettings.maxDailyMessages.pro}
+                  onChange={(e) => setAppSettings(prev => ({
+                    ...prev,
+                    maxDailyMessages: { ...prev.maxDailyMessages, pro: parseInt(e.target.value) }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Plus Tier Daily Limit</label>
+                <input
+                  type="text"
+                  value="Unlimited"
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Support Contact */}
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Support Contact</h2>
+              <Mail className="h-6 w-6 text-gray-400" />
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={appSettings.supportContact.whatsapp}
+                  onChange={(e) => setAppSettings(prev => ({
+                    ...prev,
+                    supportContact: { ...prev.supportContact, whatsapp: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Telegram Support</label>
+                <input
+                  type="text"
+                  value={appSettings.supportContact.telegram}
+                  onChange={(e) => setAppSettings(prev => ({
+                    ...prev,
+                    supportContact: { ...prev.supportContact, telegram: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Currency Settings */}
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Currency Settings</h2>
+              <Globe className="h-6 w-6 text-gray-400" />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Default Currency</label>
+              <select
+                value={appSettings.defaultCurrency}
+                onChange={(e) => setAppSettings(prev => ({ ...prev, defaultCurrency: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {appSettings.currencies.map(currency => (
+                  <option key={currency} value={currency}>{currency}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center space-x-2"
+            >
+              <Settings className="h-4 w-4" />
+              <span>Save Settings</span>
+            </button>
           </div>
         </div>
       )}
@@ -651,34 +843,53 @@ const PricingModal = ({ pricing, onClose, onSave }) => {
     onSave(formData);
   };
 
+  const handlePriceChange = (tier, currency, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [tier]: {
+        ...prev[tier],
+        [currency]: {
+          ...prev[tier][currency],
+          price: parseFloat(value)
+        }
+      }
+    }));
+  };
+
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
         <div className="mt-3">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Edit Pricing</h3>
+            <h3 className="text-lg font-medium text-gray-900">Edit Multi-Currency Pricing</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {Object.entries(formData).map(([tier, data]) => (
-              <div key={tier}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {tier.toUpperCase()} Price ($)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={data.price}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    [tier]: { ...prev[tier], price: parseFloat(e.target.value) }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {Object.entries(formData).map(([tier, tierData]) => (
+              tier !== 'free' && (
+                <div key={tier} className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-md font-semibold text-gray-800 mb-4 capitalize">{tier} Tier</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {Object.entries(tierData).map(([currency, data]) => (
+                      <div key={currency}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {currency} ({SUPPORTED_CURRENCIES[currency]?.symbol || '$'})
+                        </label>
+                        <input
+                          type="number"
+                          step={currency === 'NGN' ? '1' : '0.01'}
+                          min="0"
+                          value={data.price}
+                          onChange={(e) => handlePriceChange(tier, currency, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
             ))}
             
             <div className="flex space-x-3 pt-4">

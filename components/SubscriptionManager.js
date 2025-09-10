@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Crown, Shield, Users, Check, X, MessageCircle, Send } from 'lucide-react';
-import { updateSubscriptionTier, SUBSCRIPTION_TIERS, isAdmin, getPricing, getActiveDiscounts } from '../lib/firebase';
+import { Crown, Shield, Users, Check, X, MessageCircle, Send, Globe } from 'lucide-react';
+import { updateSubscriptionTier, SUBSCRIPTION_TIERS, isAdmin, getPricing, getActiveDiscounts, SUPPORTED_CURRENCIES } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 
 const SubscriptionManager = () => {
@@ -8,6 +8,7 @@ const SubscriptionManager = () => {
   const [loading, setLoading] = useState(false);
   const [pricing, setPricing] = useState(null);
   const [discounts, setDiscounts] = useState([]);
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
 
   useEffect(() => {
     const loadPricingData = async () => {
@@ -43,11 +44,29 @@ const SubscriptionManager = () => {
     return basePrice * (1 - bestDiscount.discountPercent / 100);
   };
 
+  const formatPrice = (price, currency) => {
+    const symbol = SUPPORTED_CURRENCIES[currency]?.symbol || '$';
+    if (currency === 'NGN') {
+      return `${symbol}${price.toLocaleString()}`;
+    }
+    return `${symbol}${price.toFixed(2)}`;
+  };
+
+  const getCurrentPricing = (tier, currency) => {
+    if (!pricing || !pricing[tier] || !pricing[tier][currency]) {
+      return tier === SUBSCRIPTION_TIERS.FREE ? 0 : 
+             (currency === 'NGN' ? (tier === SUBSCRIPTION_TIERS.PRO ? 8500 : 17000) :
+              currency === 'GBP' ? (tier === SUBSCRIPTION_TIERS.PRO ? 7.99 : 15.99) :
+              (tier === SUBSCRIPTION_TIERS.PRO ? 9.99 : 19.99));
+    }
+    return pricing[tier][currency].price;
+  };
+
   const plans = [
     {
       name: 'Free',
       tier: SUBSCRIPTION_TIERS.FREE,
-      price: '$0',
+      price: formatPrice(0, selectedCurrency),
       icon: Users,
       color: 'gray',
       features: [
@@ -66,8 +85,8 @@ const SubscriptionManager = () => {
     {
       name: 'Pro',
       tier: SUBSCRIPTION_TIERS.PRO,
-      price: pricing ? `$${getDiscountedPrice(pricing[SUBSCRIPTION_TIERS.PRO].price, SUBSCRIPTION_TIERS.PRO).toFixed(2)}` : '$9.99',
-      originalPrice: pricing ? pricing[SUBSCRIPTION_TIERS.PRO].price : 9.99,
+      price: formatPrice(getDiscountedPrice(getCurrentPricing(SUBSCRIPTION_TIERS.PRO, selectedCurrency), SUBSCRIPTION_TIERS.PRO), selectedCurrency),
+      originalPrice: getCurrentPricing(SUBSCRIPTION_TIERS.PRO, selectedCurrency),
       period: '/month',
       icon: Shield,
       color: 'blue',
@@ -90,8 +109,8 @@ const SubscriptionManager = () => {
     {
       name: 'Plus',
       tier: SUBSCRIPTION_TIERS.PLUS,
-      price: pricing ? `$${getDiscountedPrice(pricing[SUBSCRIPTION_TIERS.PLUS].price, SUBSCRIPTION_TIERS.PLUS).toFixed(2)}` : '$19.99',
-      originalPrice: pricing ? pricing[SUBSCRIPTION_TIERS.PLUS].price : 19.99,
+      price: formatPrice(getDiscountedPrice(getCurrentPricing(SUBSCRIPTION_TIERS.PLUS, selectedCurrency), SUBSCRIPTION_TIERS.PLUS), selectedCurrency),
+      originalPrice: getCurrentPricing(SUBSCRIPTION_TIERS.PLUS, selectedCurrency),
       period: '/month',
       icon: Crown,
       color: 'yellow',
@@ -175,9 +194,26 @@ const SubscriptionManager = () => {
     <div className="max-w-7xl mx-auto p-6">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
           Unlock powerful AI features and enhance your chat experience with our subscription plans.
         </p>
+        
+        {/* Currency Selector */}
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <Globe className="h-4 w-4 text-gray-500" />
+          <span className="text-sm text-gray-600">Currency:</span>
+          <select
+            value={selectedCurrency}
+            onChange={(e) => setSelectedCurrency(e.target.value)}
+            className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {Object.entries(SUPPORTED_CURRENCIES).map(([code, info]) => (
+              <option key={code} value={code}>
+                {info.symbol} {info.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Admin Notice */}
@@ -245,11 +281,11 @@ const SubscriptionManager = () => {
                   <div className="mb-4">
                     <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
                     {plan.period && <span className="text-gray-600">{plan.period}</span>}
-                    {plan.originalPrice && parseFloat(plan.price.replace('$', '')) < plan.originalPrice && (
+                    {plan.originalPrice && parseFloat(plan.price.replace(/[$£₦,]/g, '')) < plan.originalPrice && (
                       <div className="mt-1">
-                        <span className="text-lg text-gray-500 line-through">${plan.originalPrice}</span>
+                        <span className="text-lg text-gray-500 line-through">{formatPrice(plan.originalPrice, selectedCurrency)}</span>
                         <span className="ml-2 text-sm text-green-600 font-semibold">
-                          {Math.round((1 - parseFloat(plan.price.replace('$', '')) / plan.originalPrice) * 100)}% OFF
+                          {Math.round((1 - parseFloat(plan.price.replace(/[$£₦,]/g, '')) / plan.originalPrice) * 100)}% OFF
                         </span>
                       </div>
                     )}
@@ -292,7 +328,7 @@ const SubscriptionManager = () => {
                     >
                       Current Plan
                     </button>
-                  ) : canUpgrade ? (
+                  ) : plan.tier !== SUBSCRIPTION_TIERS.FREE ? (
                     <button
                       onClick={() => handleUpgrade(plan.tier)}
                       disabled={loading}
@@ -306,14 +342,6 @@ const SubscriptionManager = () => {
                           <span>Contact via WhatsApp</span>
                         </>
                       )}
-                    </button>
-                  ) : canDowngrade ? (
-                    <button
-                      onClick={() => handleUpgrade(plan.tier)}
-                      disabled={loading}
-                      className="w-full py-3 px-6 rounded-lg border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200 disabled:opacity-50"
-                    >
-                      {loading ? 'Processing...' : `Downgrade to ${plan.name}`}
                     </button>
                   ) : (
                     <button
