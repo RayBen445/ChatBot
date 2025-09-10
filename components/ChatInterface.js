@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Lock, Crown, Shield, Code, FileText, Lightbulb, Database } from 'lucide-react';
 import { useAuth } from './AuthProvider';
-import { canUseFeature, USER_STATUS, SUBSCRIPTION_TIERS } from '../lib/firebase';
+import { canUseFeature, USER_STATUS, SUBSCRIPTION_TIERS, isAdmin } from '../lib/firebase';
 import Link from 'next/link';
 
 // Feature categories for better organization
@@ -57,7 +57,7 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [dailyMessageCount, setDailyMessageCount] = useState(0);
+  const [monthlyMessageCount, setMonthlyMessageCount] = useState(0);
   const [showFeatureGuide, setShowFeatureGuide] = useState(true);
   const messagesEndRef = useRef(null);
 
@@ -71,6 +71,11 @@ export default function ChatInterface() {
   const canSendMessage = () => {
     if (!userProfile) return false;
     
+    // Admin users have unlimited access
+    if (isAdmin(userProfile)) {
+      return true;
+    }
+    
     // Check if user is banned or suspended
     if (userProfile.status === USER_STATUS.BANNED) {
       return false;
@@ -83,30 +88,42 @@ export default function ChatInterface() {
       }
     }
     
-    // Check daily message limits for free users
-    if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE && dailyMessageCount >= 50) {
+    // Check monthly message limits based on tier
+    const monthlyLimit = getMonthlyLimit();
+    if (monthlyLimit !== Infinity && monthlyMessageCount >= monthlyLimit) {
       return false;
     }
     
     return true;
   };
 
-  const getDailyLimit = () => {
-    if (!userProfile) return 50;
+  const getMonthlyLimit = () => {
+    if (!userProfile) return 1500; // Free tier monthly limit
+    
+    // Admin users have unlimited access
+    if (isAdmin(userProfile)) {
+      return Infinity;
+    }
     
     switch (userProfile.subscriptionTier) {
       case SUBSCRIPTION_TIERS.FREE:
-        return 50;
+        return 1500; // 1500 messages per month for free users (50/day * 30)
       case SUBSCRIPTION_TIERS.PRO:
+        return 15000; // 15000 messages per month for pro users (500/day * 30)
       case SUBSCRIPTION_TIERS.PLUS:
         return Infinity;
       default:
-        return 50;
+        return 1500;
     }
   };
 
   const getStatusMessage = () => {
     if (!userProfile) return null;
+    
+    // Admin users don't get status messages about limits
+    if (isAdmin(userProfile)) {
+      return null;
+    }
     
     if (userProfile.status === USER_STATUS.BANNED) {
       return {
@@ -127,10 +144,19 @@ export default function ChatInterface() {
       }
     }
     
-    if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE && dailyMessageCount >= 50) {
+    if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE && monthlyMessageCount >= 1500) {
       return {
         type: 'warning',
-        message: 'Daily message limit reached. Upgrade to Pro for unlimited messages.',
+        message: 'Monthly message limit reached. Upgrade to Pro for 15,000 messages or Plus for unlimited.',
+        icon: Crown,
+        action: 'upgrade'
+      };
+    }
+    
+    if (userProfile.subscriptionTier === SUBSCRIPTION_TIERS.PRO && monthlyMessageCount >= 15000) {
+      return {
+        type: 'warning',
+        message: 'Monthly Pro message limit reached. Upgrade to Plus for unlimited messages.',
         icon: Crown,
         action: 'upgrade'
       };
@@ -149,9 +175,9 @@ export default function ChatInterface() {
     setIsLoading(true);
     setShowFeatureGuide(false); // Hide feature guide once user starts chatting
     
-    // Increment daily message count for free users
-    if (userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE) {
-      setDailyMessageCount(prev => prev + 1);
+    // Increment monthly message count for users with limits (not admins)
+    if (!isAdmin(userProfile) && getMonthlyLimit() !== Infinity) {
+      setMonthlyMessageCount(prev => prev + 1);
     }
 
     try {
@@ -200,7 +226,7 @@ export default function ChatInterface() {
   };
 
   const statusMessage = getStatusMessage();
-  const dailyLimit = getDailyLimit();
+  const monthlyLimit = getMonthlyLimit();
 
   return (
     <div className="flex flex-col h-screen">
@@ -228,20 +254,20 @@ export default function ChatInterface() {
         </div>
       )}
       
-      {/* Usage Counter for Free Users */}
-      {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+      {/* Usage Counter for Users with Limits (not admins or unlimited Plus users) */}
+      {userProfile && !isAdmin(userProfile) && userProfile.subscriptionTier !== SUBSCRIPTION_TIERS.PLUS && (
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">
-              Daily messages: {dailyMessageCount}/{dailyLimit}
+              Monthly messages: {monthlyMessageCount.toLocaleString()}/{monthlyLimit.toLocaleString()}
             </span>
             <div className="flex items-center space-x-2">
               <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div 
                   className={`h-full transition-all duration-300 ${
-                    dailyMessageCount >= dailyLimit ? 'bg-red-500' : 'bg-blue-500'
+                    monthlyMessageCount >= monthlyLimit ? 'bg-red-500' : 'bg-blue-500'
                   }`}
-                  style={{ width: `${Math.min((dailyMessageCount / dailyLimit) * 100, 100)}%` }}
+                  style={{ width: `${Math.min((monthlyMessageCount / monthlyLimit) * 100, 100)}%` }}
                 />
               </div>
               <Link
@@ -279,10 +305,20 @@ export default function ChatInterface() {
             </h3>
             <p className="text-gray-500 mb-6">I can help you with a wide range of tasks. Here&apos;s what I can do:</p>
             
-            {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+            {userProfile && !isAdmin(userProfile) && monthlyLimit !== Infinity && (
               <div className="mt-4 mb-6 p-3 bg-blue-50 rounded-lg inline-block">
                 <p className="text-sm text-blue-700">
-                  You have {dailyLimit - dailyMessageCount} free messages remaining today
+                  You have {(monthlyLimit - monthlyMessageCount).toLocaleString()} {userProfile.subscriptionTier} messages remaining this month
+                </p>
+              </div>
+            )}
+            
+            {/* Admin unlimited access notice */}
+            {userProfile && isAdmin(userProfile) && (
+              <div className="mt-4 mb-6 p-3 bg-gradient-to-r from-purple-100 to-indigo-100 border border-purple-300 rounded-lg inline-block">
+                <p className="text-sm text-purple-700 flex items-center">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Administrator Access - Unlimited Messages
                 </p>
               </div>
             )}
@@ -427,12 +463,12 @@ export default function ChatInterface() {
           </button>
         </form>
         
-        {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && dailyMessageCount >= 40 && dailyMessageCount < 50 && (
+        {userProfile && !isAdmin(userProfile) && monthlyLimit !== Infinity && monthlyMessageCount >= Math.floor(monthlyLimit * 0.8) && monthlyMessageCount < monthlyLimit && (
           <div className="mt-2 text-center">
             <p className="text-sm text-orange-600">
-              {dailyLimit - dailyMessageCount} messages remaining today. 
+              {(monthlyLimit - monthlyMessageCount).toLocaleString()} messages remaining this month. 
               <Link href="/subscription" className="ml-1 underline hover:text-orange-700">
-                Upgrade for unlimited
+                {userProfile.subscriptionTier === SUBSCRIPTION_TIERS.FREE ? 'Upgrade to Pro or Plus' : 'Upgrade to Plus for unlimited'}
               </Link>
             </p>
           </div>

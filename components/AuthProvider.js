@@ -4,7 +4,9 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, createUserProfile, getUserProfile, updateUserProfile } from '../lib/firebase';
 
@@ -25,6 +27,8 @@ export const AuthProvider = ({ children }) => {
     if (displayName) {
       await updateProfile(result.user, { displayName });
     }
+    // Send email verification
+    await sendEmailVerification(result.user);
     // Create user profile in Firestore
     await createUserProfile(result.user, { displayName });
     return result;
@@ -33,6 +37,16 @@ export const AuthProvider = ({ children }) => {
   const login = (email, password) => {
     if (!auth) throw new Error('Firebase not initialized');
     return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const resetPassword = (email) => {
+    if (!auth) throw new Error('Firebase not initialized');
+    return sendPasswordResetEmail(auth, email);
+  };
+
+  const resendVerification = () => {
+    if (!auth || !currentUser) throw new Error('User not authenticated');
+    return sendEmailVerification(currentUser);
   };
 
   const logout = () => {
@@ -50,13 +64,27 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(user);
       
       if (user) {
-        // Create or get user profile
-        await createUserProfile(user);
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
-        
-        // Update last active
-        await updateUserProfile(user.uid, { lastActive: new Date() });
+        try {
+          // Create or get user profile
+          await createUserProfile(user);
+          const profile = await getUserProfile(user.uid);
+          setUserProfile(profile);
+          
+          // Update last active
+          await updateUserProfile(user.uid, { lastActive: new Date() });
+        } catch (error) {
+          console.error('Error setting up user profile:', error);
+          // Even if profile setup fails, we should still set a basic profile
+          // to ensure the UI doesn't break
+          setUserProfile({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: 'user',
+            subscriptionTier: 'free',
+            status: 'active'
+          });
+        }
       } else {
         setUserProfile(null);
       }
@@ -87,12 +115,23 @@ export const AuthProvider = ({ children }) => {
     signup,
     login,
     logout,
+    resetPassword,
+    resendVerification,
     loading
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white/80 text-lg">Loading...</p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
