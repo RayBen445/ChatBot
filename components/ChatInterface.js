@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Lock, Crown, Shield, Code, FileText, Lightbulb, Database } from 'lucide-react';
 import { useAuth } from './AuthProvider';
-import { canUseFeature, USER_STATUS, SUBSCRIPTION_TIERS } from '../lib/firebase';
+import { canUseFeature, USER_STATUS, SUBSCRIPTION_TIERS, isAdmin } from '../lib/firebase';
 import Link from 'next/link';
 
 // Feature categories for better organization
@@ -71,6 +71,11 @@ export default function ChatInterface() {
   const canSendMessage = () => {
     if (!userProfile) return false;
     
+    // Admin users have unlimited access
+    if (isAdmin(userProfile)) {
+      return true;
+    }
+    
     // Check if user is banned or suspended
     if (userProfile.status === USER_STATUS.BANNED) {
       return false;
@@ -94,6 +99,11 @@ export default function ChatInterface() {
   const getDailyLimit = () => {
     if (!userProfile) return 50;
     
+    // Admin users have unlimited access
+    if (isAdmin(userProfile)) {
+      return Infinity;
+    }
+    
     switch (userProfile.subscriptionTier) {
       case SUBSCRIPTION_TIERS.FREE:
         return 50;
@@ -107,6 +117,11 @@ export default function ChatInterface() {
 
   const getStatusMessage = () => {
     if (!userProfile) return null;
+    
+    // Admin users don't get status messages about limits
+    if (isAdmin(userProfile)) {
+      return null;
+    }
     
     if (userProfile.status === USER_STATUS.BANNED) {
       return {
@@ -149,8 +164,8 @@ export default function ChatInterface() {
     setIsLoading(true);
     setShowFeatureGuide(false); // Hide feature guide once user starts chatting
     
-    // Increment daily message count for free users
-    if (userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE) {
+    // Increment daily message count for free users (not admins)
+    if (userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile)) {
       setDailyMessageCount(prev => prev + 1);
     }
 
@@ -228,8 +243,8 @@ export default function ChatInterface() {
         </div>
       )}
       
-      {/* Usage Counter for Free Users */}
-      {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+      {/* Usage Counter for Free Users (not admins) */}
+      {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile) && (
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">
@@ -279,10 +294,20 @@ export default function ChatInterface() {
             </h3>
             <p className="text-gray-500 mb-6">I can help you with a wide range of tasks. Here&apos;s what I can do:</p>
             
-            {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+            {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile) && (
               <div className="mt-4 mb-6 p-3 bg-blue-50 rounded-lg inline-block">
                 <p className="text-sm text-blue-700">
                   You have {dailyLimit - dailyMessageCount} free messages remaining today
+                </p>
+              </div>
+            )}
+            
+            {/* Admin unlimited access notice */}
+            {userProfile && isAdmin(userProfile) && (
+              <div className="mt-4 mb-6 p-3 bg-gradient-to-r from-purple-100 to-indigo-100 border border-purple-300 rounded-lg inline-block">
+                <p className="text-sm text-purple-700 flex items-center">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Administrator Access - Unlimited Messages
                 </p>
               </div>
             )}
@@ -427,7 +452,7 @@ export default function ChatInterface() {
           </button>
         </form>
         
-        {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && dailyMessageCount >= 40 && dailyMessageCount < 50 && (
+        {userProfile?.subscriptionTier === SUBSCRIPTION_TIERS.FREE && !isAdmin(userProfile) && dailyMessageCount >= 40 && dailyMessageCount < 50 && (
           <div className="mt-2 text-center">
             <p className="text-sm text-orange-600">
               {dailyLimit - dailyMessageCount} messages remaining today. 
